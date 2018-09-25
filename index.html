@@ -27,7 +27,7 @@ var y = d3.scaleLinear()
 var z = d3.scaleOrdinal()
 	.range(d3.schemePaired);
 
-var data = d3.csv("/data.csv");
+var data = d3.csv("https://www.datos.gov.co/resource/d78e-ka2b.csv");
 
 var dataPerComuna = d3.nest()
 	.key(function(d) {return d.c_digo; })
