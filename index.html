@@ -1,80 +1,289 @@
 <!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <title>Population in Medellín : Comunas and ages</title>
+</head>
 <style>
 
-.axis .domain {
-  display: none;
+body {
+	font-family: "Helvetica Neue", Helvetica, Arial, Open Sans, sans-serif;
+	position: relative;
+	width: 960px;
+	padding:0.5em;
+}
+
+.axis text {
+	font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+	fill: none;
+	stroke: #000;
+	shape-rendering: crispEdges;
+}
+
+
+.x.axis path {
+	display: none;
 }
 
 </style>
+
+<body>
+	 <h1>Population in Medellín : Comunas and ages</h1>
+	 <p>Open data from <a href="https://www.datos.gov.co/Estad-sticas-Nacionales/Proyecciones-De-Poblaci-n-Medell-n-2016-2020/imj6-7tfq"> the Colombian government</a> allow us to study the demographics in Colombia's second most inhabited city, Medellín.</p>
+	 <p>The different Comunas of Medellín are ordered from most to least populated, and divided into different age categories for comparison.</p>
+	 <p>Use the slider to change the data's year, from 2016 to 2020. After 2017, the data is projections.</p>
+	 <p>Mouseover the graph to see details of each bar component.</p>
+
+<label for="year">Year : </label>
+    <input type="range" onclick="changeText()" id="year" name="year" 
+           min="2016" max="2020" value="2018" step="1" />
+
+<p id="yearconfirm"></p>
+
+<script>
+function changeText() {
+    yearv = document.getElementById("year").value;
+    document.getElementById("yearconfirm").innerHTML = yearv;
+}
+</script>
+
+
+
 <svg width="960" height="500"></svg>
 <script src="https://d3js.org/d3.v5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
+
+
+
 <script>
+	var year = document.getElementById("year").value;
 
-var svg = d3.select("svg"),
-    margin = {top: 20, right: 20, bottom: 30, left: 40},
-    width = +svg.attr("width") - margin.left - margin.right,
-    height = +svg.attr("height") - margin.top - margin.bottom,
-    g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+	let attr = 'total_'+year;
+	var keys;
+	var svg = d3.select("svg"),
+	margin = {top: 20, right: 20, bottom: 75, left: 40},
+	width = +svg.attr("width") - margin.left - margin.right,
+	height = +svg.attr("height") - margin.top - margin.bottom,
+	g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-var x = d3.scaleBand()
-    .rangeRound([0, width])
-    .paddingInner(0.05)
-    .align(0.1);
+	var x = d3.scaleBand()
+	.range([0, width])
+	.paddingInner(0.05)
+	.align(0.1);
 
-var y = d3.scaleLinear()
-    .rangeRound([height, 0]);
+	var y = d3.scaleLinear()
+	.range([height, 0]);
 
-var z = d3.scaleOrdinal()
-	.range(d3.schemePaired);
+	var z = d3.scaleOrdinal()
+	.range(d3.schemeSet1);
 
-const urldata = "https://www.datos.gov.co/resource/d78e-ka2b.csv";
+	const _urldata = "https://www.datos.gov.co/resource/d78e-ka2b.csv";
 
-var data = d3.csv(urldata);
-
-var dataPerComuna = d3.nest()
-	.key(function(d) {return d.c_digo; })
-	.rollup(function(v){return d3.sum(d, function(g){
-       return g.total_2018;
-     });
-  }).entries(data);
+	var tooltip;
 
 
 
-var dataSorted = dataPerComuna.sort((a,b) => d3.descending(a.value, b.value));
+function updatedata(data, year){
 
-x.domain(dataSorted.map(function(d) { return d.key; }));
-y.domain([0, d3.max(dataSorted, function(d) { return d.value; })]).nice();
-//z.domain(keys);
+	let attr = 'total_'+year;
 
-g.append("g")
-      .attr("class", "axis")
-      .attr("transform", "translate(0," + height + ")")
-      .call(d3.axisBottom(x));
+	var dataPerComunaTotal = d3.nest()
+		.key(function(d) {return d.c_digo; })
+		.rollup(function(v){return d3.sum(v, function(g){
+			return g[attr];
+		});
+		}).entries(data);
 
-g.append("g")
-      .attr("class", "axis")
-      .call(d3.axisLeft(y).ticks(null, "s"))
-    .append("text")
-      .attr("x", 2)
-      .attr("y", y(y.ticks().pop()) + 0.5)
-      .attr("dy", "0.32em")
-      .attr("fill", "#000")
-      .attr("font-weight", "bold")
-      .attr("text-anchor", "start")
-      .text("Population");      
+		var dataSorted = dataPerComunaTotal.sort((a,b) => d3.descending(a.value, b.value))
+		.map(function(d) {
+			return { codigo: d.key , population: d.value };});
+
+	var dPaC = d3.nest()
+			.key(function(d) {return d.c_digo; })
+	    	.key(function(d) {return d.grupo_edad})
+	    	.key(function(d) {return d[attr]})
+			.entries(data);
+
+	var dataInt = dPaC.map(function(d){
+  		return { codigo : d.key, pop : d.values.map(function(d){
+    		return { age: d.key, val: d.values[0].key
+    		};
+    	})};
+  	});
+
+  	x.domain(dataSorted.map(function(d) { return d.codigo; }));
+  	y.domain([0, d3.max(dataSorted, function(d) { return d.population; })]).nice();
+	z.domain(keys);
+
+	var dataFinal = dataInt.map(function(d){
+	    	return{codigo: d.codigo, "0-4":d.pop[0].val, "5-9":d.pop[1].val,"10-14":d.pop[2].val,"15-19":d.pop[3].val,"20-24":d.pop[4].val,"25-29":d.pop[5].val,"30-34":d.pop[6].val,"35-39":d.pop[7].val,"40-44":d.pop[8].val,"45-49":d.pop[9].val,"50-54":d.pop[10].val,"55-59":d.pop[11].val,"60-64":d.pop[12].val,"65-69":d.pop[13].val,"70-74":d.pop[14].val,"75-79":d.pop[15].val,"80 Y MAS":d.pop[16].val}
+	    });
+
+	updateviz(dataFinal);
+
+}
 
 
 
-g.append("g")
-    .selectAll("g")
-    //.data(d3.stack().keys(keys)(data))
-    .enter().append("g")
-      .attr("fill", "red")
-    .selectAll("rect")
-    .data(function(d) { return d; })
-    .enter().append("rect")
-      .attr("x", function(d) { return x(d.dataSorted.key); })
-      .attr("y", function(d) { return y(d.dataSorted.value); })
-      .attr("height", function(d) { return y(d[0]) - y(d[1]); })
-      .attr("width", x.bandwidth());
+
+function updateviz(data){
+
+	g.selectAll("g")
+			.remove()
+			.exit()
+			.data(data);
+
+	g.append("g")
+	.attr("class", "axis")
+	    .attr("transform", "translate(0," + height + ")")
+	    .call(d3.axisBottom(x))
+	    .selectAll("text")
+		    .attr("y", 0)
+		    .attr("x", 9)
+		    .attr("dy", ".35em")
+		    .attr("transform", "rotate(60)")
+		    .style("text-anchor", "start");
+
+	    g.append("g")
+	      .attr("class", "axis")
+	      .call(d3.axisLeft(y).ticks(null, "s"))
+	      .append("text")
+	      .attr("x", 2)
+	      .attr("y", y(y.ticks().pop()) + 0.5)
+	      .attr("dy", "0.32em")
+	      .attr("fill", "#000")
+	      .attr("font-weight", "bold")
+	      .attr("text-anchor", "start")
+	      .text("Population");
+
+
+
+		g.append("g")
+	      .selectAll(".bar")
+	      .data(d3.stack().keys(keys)(data))
+	      .enter().append("g")
+	      .attr("fill", function(d) {
+	      	return z(d.key); })
+	      .selectAll("rect")
+	      .data(function(d) {
+	      	return d; })
+	      .enter().append("rect")
+		      .attr("x", function(d) { return x(d.data.codigo); })
+		      .attr("y", function(d) { return y(d[1]); })
+		      .attr("height", function(d) { return y(d[0]) - y(d[1]); })
+		      .attr("width", x.bandwidth())
+		      .style("fill-opacity","0.5")
+
+	      .on("mouseover", function (d) {  
+	      	var age = (_.invert(d.data))[d[1]-d[0]];
+
+	      	updateTooltip(d, age, d3.mouse(this));
+	        d3.select(this)
+	          .transition()
+	          .duration(500)
+	          .style("fill-opacity","1");    
+	      })
+	     .on("mouseout",function(){
+	     	tooltip.attr("transform", "translate(-1000,0)")
+	        d3.select(this)
+	          .transition()
+	          .duration(500)
+	          .style("fill-opacity","0.5");        
+	 	
+
+	    });
+	    g.selectAll(".bar")
+	    	.transition();
+	     
+
+		createTooltip();
+
+}
+
+ function createTooltip() {
+
+    tooltip = g.append("g")
+        .attr("id", "tooltip")
+        .attr("transform", "translate(-1000,0)")
+        .style("font", "16px sans-serif");
+
+    let tooltip_bg = tooltip.append("rect")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("rx", 5)
+        .attr("ry", 5)
+        .attr("width", 150)
+        .attr("height", 60)
+        .attr("fill", "#d6d4d4")
+        .style("fill-opacity", "0.8");
+
+    let tool_text = tooltip.append("text")
+        .attr("x", 10)
+        .attr("y", 15)
+        .attr("fill", "black")
+        .attr("id", "tooltip_1");
+
+    let tool_title = tool_text.append("tspan")
+        .attr("id", "tooltip-title")
+        .attr("x", 10)
+        .attr("y", 15)
+        .style("font-weight", "bold")
+        .style("font-family", "'Roboto', sans-serif");
+
+    let tooltip_text = tool_text.append("tspan")
+        .attr("id", "tooltip-text")
+        .attr("x", 10)
+        .attr("y", 35)
+        .style("font-weight", "regular")
+        .style("font-family", "Open Sans, sans-serif");
+
+    let tooltip_pop = tool_text.append("tspan")
+        .attr("id", "tooltip-pop")
+        .attr("x", 10)
+        .attr("y", 50)
+        .style("font-family", "'Roboto', sans-serif");
+};
+
+
+function updateTooltip(d, key, coords) {
+
+    tooltip.attr("transform", `translate(${coords[0] + 15},${coords[1] - 25})`)
+    tooltip.select("#tooltip-title")
+        .text(d.data.codigo);
+
+    tooltip.select("#tooltip-text")
+        .text(`Age: ${key}`);
+
+    tooltip.select('#tooltip-pop')
+        .text(`Population: ${d[1]-d[0]}`);
+    d3.event.preventDefault();
+};    
+
+var data = d3.csv(_urldata).then(data => {
+
+		var dataPerComunaCategorized = d3.nest()
+		.key(function(d) {return d.c_digo; })
+		.entries(data)
+		.map(function(d) {
+			return { codigo: d.key , populations: d.values };});
+		keys = dataPerComunaCategorized[1].populations.map(function(d) {return d.grupo_edad});
+
+		var year = document.getElementById("year").value;
+
+		updatedata(data, year);
+		d3.select("#year").on("input", function() {
+  			updatedata(data, this.value);
+		}); 
+
+});
+
+ 
+
 </script>
+
+<p><b>Dataviz from :</b> Marwan Mehenni  <a href="https://twitter.com/MarwanMhn?ref_src=twsrc%5Etfw" class="twitter-follow-button" data-show-count="false">Follow @MarwanMhn</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script></p>
+
+<p><b>Data from :</b> <a href="https://www.datos.gov.co/Estad-sticas-Nacionales/Proyecciones-De-Poblaci-n-Medell-n-2016-2020/imj6-7tfq"> datos.gov.co</a></p>
