@@ -4,7 +4,7 @@ Open Data from the Colombian government gives great insight about the evolution 
 
 ## Getting Started
 
-The vizualisation is available at https://github.com/mwnmhn/mwnmhn.github.io .
+The vizualisation is available at https://mwnmhn.github.io .
 
 ## Prerequisites
 
