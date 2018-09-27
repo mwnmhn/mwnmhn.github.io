@@ -8,13 +8,11 @@ The vizualisation is available at https://github.com/mwnmhn/mwnmhn.github.io .
 
 ## Prerequisites
 
-A recent internet browser that supports JavaScript.
+A recent internet browser that supports JavaScript to open the visualization.
 
 ```
 Google Chrome, Mozilla Firefox, Opera, even Edge.
 ```
-
-End with an example of getting some data out of the system or using it for a little demo
 
 ## Technologies Used
 
